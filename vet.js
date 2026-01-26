@@ -3,7 +3,7 @@
 
     const PLUGIN_NAME = 'vet';
     const PLAYLIST_URL = 
-  'https://cors.isomorphic-git.org/http://ТВОЙ_ПЛЕЙЛИСТ.m3u';
+  'https://cors.isomorphic-git.org/http://pl.ru-tv.site/bcc73d92/33fcd1b1/tv.m3u';
 
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
@@ -125,5 +125,6 @@
     addMenu();
 
 })();
+
 
 
