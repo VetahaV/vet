@@ -1,130 +1,103 @@
 (function () {
     'use strict';
 
-    const PLUGIN_NAME = 'vet';
-    const PLAYLIST_URL = 
-  'https://cors.isomorphic-git.org/http://pl.ru-tv.site/bcc73d92/33fcd1b1/tv.m3u';
+    if (!window.Lampa) return;
 
+    const PLUGIN = 'IPTV';
+    const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
-    let channels = [];
     let groups = {};
 
-    function log(msg) {
-        console.log('[IPTV]', msg);
-    }
-
-    function parseM3U(data) {
-        const lines = data.split('\n');
-        let current = null;
-        channels = [];
+    function parseM3U(text) {
+        let lines = text.split('\n');
+        let ch = null;
         groups = {};
 
         lines.forEach(line => {
             line = line.trim();
-            if (line.startsWith('#EXTINF')) {
-                const name = line.split(',').pop();
 
-                const logo = /tvg-logo="([^"]+)"/.exec(line);
-                const group = /group-title="([^"]+)"/.exec(line);
+            if (line.indexOf('#EXTINF') === 0) {
+                let name = line.split(',').pop();
+                let logo = /tvg-logo="([^"]+)"/.exec(line);
+                let group = /group-title="([^"]+)"/.exec(line);
 
-                current = {
+                ch = {
                     name: name,
                     logo: logo ? logo[1] : '',
                     group: group ? group[1] : 'Без группы',
                     url: ''
                 };
-            } else if (line && !line.startsWith('#') && current) {
-                current.url = line;
-                channels.push(current);
+            }
+            else if (line && line[0] !== '#' && ch) {
+                ch.url = line;
 
-                if (!groups[current.group]) groups[current.group] = [];
-                groups[current.group].push(current);
+                if (!groups[ch.group]) groups[ch.group] = [];
+                groups[ch.group].push(ch);
 
-                current = null;
+                ch = null;
             }
         });
     }
 
-    function loadPlaylist(callback) {
-        fetch(PLAYLIST_URL)
-            .then(r => r.text())
-            .then(text => {
-                parseM3U(text);
-                callback();
-            })
-            .catch(e => {
-                log('Ошибка загрузки плейлиста');
-                console.error(e);
-            });
+    function loadPlaylist(done) {
+        Lampa.Utils.request({
+            url: PLAYLIST_URL,
+            success: function (data) {
+                parseM3U(data);
+                done();
+            },
+            error: function () {
+                Lampa.Noty.show('Ошибка загрузки IPTV плейлиста');
+            }
+        });
     }
 
-    function openChannel(channel) {
+    function play(ch) {
         Lampa.Player.play({
-            title: channel.name,
-            url: channel.url,
-            poster: channel.logo,
-            timeline: true,
+            title: ch.name,
+            url: ch.url,
+            poster: ch.logo,
             epg: {
                 url: EPG_URL
             }
         });
     }
 
-    function buildGroups() {
-        return Object.keys(groups).map(name => ({
-            title: name,
-            channels: groups[name]
-        }));
-    }
-
     Lampa.Component.add('iptv', {
         create: function () {
-            const scroll = new Lampa.Scroll({
-                mask: true
-            });
+            let html = $('<div class="iptv"></div>');
 
-            loadPlaylist(() => {
-                const list = buildGroups();
+            loadPlaylist(function () {
+                Object.keys(groups).forEach(group => {
+                    html.append('<div class="iptv-group">' + group + '</div>');
 
-                list.forEach(group => {
-                    scroll.append($('<div class="iptv-group">' + group.title + '</div>'));
-
-                    group.channels.forEach(ch => {
-                        const item = $(`
-                            <div class="iptv-channel selector">
-                                <img src="${ch.logo}" />
+                    groups[group].forEach(ch => {
+                        let item = $(`
+                            <div class="iptv-item selector">
+                                ${ch.logo ? `<img src="${ch.logo}">` : ''}
                                 <span>${ch.name}</span>
                             </div>
                         `);
 
-                        item.on('click', () => openChannel(ch));
-                        scroll.append(item);
+                        item.on('click', () => play(ch));
+                        html.append(item);
                     });
                 });
-
-                scroll.render();
             });
 
-            return scroll.render();
+            return html;
         }
     });
 
-    function addMenu() {
-        Lampa.Listener.follow('app', function (e) {
-            if (e.type === 'ready') {
-                Lampa.Activity.push({
-                    title: PLUGIN_NAME,
-                    component: 'iptv',
-                    page: 1
-                });
-            }
-        });
-    }
-
-    addMenu();
+    Lampa.Listener.follow('app', function (e) {
+        if (e.type === 'ready') {
+            Lampa.Activity.push({
+                title: PLUGIN,
+                component: 'iptv',
+                page: 1
+            });
+        }
+    });
 
 })();
-
-
-
