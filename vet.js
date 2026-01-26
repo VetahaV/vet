@@ -1,15 +1,20 @@
-export default {
-  async fetch(request) {
-    const url = 'https://falling-recipe-749e.vetahav83.workers.dev/';
+export default function plugin() {
+  return {
+    name: 'example-plugin',
+    version: '1.0',
+    icon: '',
+    description: 'Пример плагина для Lampa',
 
-    const response = await fetch(url);
-    const text = await response.text();
+    async getList() {
+      // Возвращаем пустой список каналов для проверки
+      return [];
+    },
 
-    return new Response(text, {
-      headers: {
-        'Content-Type': 'application/vnd.apple.mpegurl',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-  }
+    play(channel) {
+      return {
+        url: channel.url,
+        title: channel.name,
+      };
+    }
+  };
 }
