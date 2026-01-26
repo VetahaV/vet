@@ -1,10 +1,10 @@
 (function () {
     'use strict';
 
-    if (!window.Lampa || !Lampa.Plugin) return;
+    if (!window.Lampa || !Lampa.Source) return;
 
-    const PLUGIN_ID = 'iptv_plugin';
-    const PLUGIN_NAME = 'IPTV';
+    const SOURCE_ID = 'iptv_source';
+    const SOURCE_NAME = 'IPTV';
     const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
@@ -18,7 +18,7 @@
         lines.forEach(line => {
             line = line.trim();
 
-            if (line.indexOf('#EXTINF') === 0) {
+            if (line.startsWith('#EXTINF')) {
                 ch = {
                     name: line.split(',').pop(),
                     logo: (/tvg-logo="([^"]+)"/.exec(line) || [])[1] || '',
@@ -26,7 +26,7 @@
                     url: ''
                 };
             }
-            else if (line && line[0] !== '#' && ch) {
+            else if (line && !line.startsWith('#') && ch) {
                 ch.url = line;
                 (groups[ch.group] = groups[ch.group] || []).push(ch);
                 ch = null;
@@ -34,65 +34,39 @@
         });
     }
 
-    function loadPlaylist(done) {
-        Lampa.Utils.request({
-            url: PLAYLIST_URL,
-            success: function (data) {
-                parseM3U(data);
-                done();
-            },
-            error: function () {
-                Lampa.Noty.show('IPTV: ошибка загрузки плейлиста');
-            }
-        });
-    }
+    Lampa.Source.add({
+        id: SOURCE_ID,
+        title: SOURCE_NAME,
+        search: function (query, page, success, error) {
+            Lampa.Utils.request({
+                url: PLAYLIST_URL,
+                success: function (data) {
+                    parseM3U(data);
 
-    function play(ch) {
-        Lampa.Player.play({
-            title: ch.name,
-            url: ch.url,
-            poster: ch.logo,
-            epg: { url: EPG_URL }
-        });
-    }
-
-    Lampa.Component.add(PLUGIN_ID, {
-        create: function () {
-            let html = $('<div class="iptv"></div>');
-
-            loadPlaylist(function () {
-                Object.keys(groups).forEach(group => {
-                    html.append('<div class="iptv-group">' + group + '</div>');
-
-                    groups[group].forEach(ch => {
-                        let item = $(`
-                            <div class="iptv-item selector">
-                                ${ch.logo ? `<img src="${ch.logo}">` : ''}
-                                <span>${ch.name}</span>
-                            </div>
-                        `);
-                        item.on('click', () => play(ch));
-                        html.append(item);
+                    let items = [];
+                    Object.keys(groups).forEach(g => {
+                        groups[g].forEach(ch => {
+                            items.push({
+                                title: ch.name,
+                                poster: ch.logo,
+                                url: ch.url,
+                                group: g,
+                                epg: EPG_URL
+                            });
+                        });
                     });
-                });
+
+                    success(items, false);
+                },
+                error: error
             });
-
-            return html;
-        }
-    });
-
-    Lampa.Plugin.add({
-        id: PLUGIN_ID,
-        name: PLUGIN_NAME,
-        description: 'IPTV плагин',
-        version: '1.0.0',
-        type: 'video',
-        onLoad: function () {},
-        onOpen: function () {
-            Lampa.Activity.push({
-                title: PLUGIN_NAME,
-                component: PLUGIN_ID,
-                page: 1
+        },
+        play: function (item) {
+            Lampa.Player.play({
+                title: item.title,
+                url: item.url,
+                poster: item.poster,
+                epg: { url: EPG_URL }
             });
         }
     });
