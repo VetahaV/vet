@@ -2,7 +2,9 @@
     'use strict';
 
     const PLUGIN_NAME = 'vet';
-    const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
+    const PLAYLIST_URL = 
+  'https://cors.isomorphic-git.org/http://ТВОЙ_ПЛЕЙЛИСТ.m3u';
+
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
     let channels = [];
@@ -123,4 +125,5 @@
     addMenu();
 
 })();
+
 
