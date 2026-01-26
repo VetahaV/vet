@@ -1,10 +1,8 @@
 (function () {
     'use strict';
 
-    if (!window.Lampa || !Lampa.Source) return;
+    if (!window.Lampa || !Lampa.Extension) return;
 
-    const SOURCE_ID = 'iptv_source';
-    const SOURCE_NAME = 'IPTV';
     const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
@@ -34,41 +32,56 @@
         });
     }
 
-    Lampa.Source.add({
-        id: SOURCE_ID,
-        title: SOURCE_NAME,
-        search: function (query, page, success, error) {
-            Lampa.Utils.request({
-                url: PLAYLIST_URL,
-                success: function (data) {
-                    parseM3U(data);
+    function openIPTV() {
+        let html = $('<div class="iptv"></div>');
 
-                    let items = [];
-                    Object.keys(groups).forEach(g => {
-                        groups[g].forEach(ch => {
-                            items.push({
+        Lampa.Utils.request({
+            url: PLAYLIST_URL,
+            success: function (data) {
+                parseM3U(data);
+
+                Object.keys(groups).forEach(group => {
+                    html.append('<div class="iptv-group">' + group + '</div>');
+
+                    groups[group].forEach(ch => {
+                        let item = $(`
+                            <div class="iptv-item selector">
+                                ${ch.logo ? `<img src="${ch.logo}">` : ''}
+                                <span>${ch.name}</span>
+                            </div>
+                        `);
+
+                        item.on('click', () => {
+                            Lampa.Player.play({
                                 title: ch.name,
-                                poster: ch.logo,
                                 url: ch.url,
-                                group: g,
-                                epg: EPG_URL
+                                poster: ch.logo,
+                                epg: { url: EPG_URL }
                             });
                         });
-                    });
 
-                    success(items, false);
-                },
-                error: error
-            });
-        },
-        play: function (item) {
-            Lampa.Player.play({
-                title: item.title,
-                url: item.url,
-                poster: item.poster,
-                epg: { url: EPG_URL }
-            });
-        }
+                        html.append(item);
+                    });
+                });
+            },
+            error: function () {
+                Lampa.Noty.show('Ошибка загрузки IPTV');
+            }
+        });
+
+        Lampa.Activity.push({
+            title: 'IPTV',
+            component: 'content',
+            page: 1,
+            html: html
+        });
+    }
+
+    Lampa.Extension.add({
+        name: 'IPTV',
+        description: 'IPTV плейлист',
+        version: '1.0',
+        onClick: openIPTV
     });
 
 })();
