@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    const PLUGIN_NAME = 'IPTV';
-    const PLAYLIST_URL = 'http://pl.ru-tv.site/bcc73d92/33fcd1b1/tv.m3u';
+    const PLUGIN_NAME = 'vet';
+    const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
     let channels = [];
@@ -123,3 +123,4 @@
     addMenu();
 
 })();
+
