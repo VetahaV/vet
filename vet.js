@@ -1,87 +1,61 @@
-(function () {
-    'use strict';
+export default function plugin() {
+  return {
+    name: 'ru-tv-ipltv',
+    version: '1.0',
+    icon: 'https://pl.ru-tv.site/favicon.ico', // иконка плагина
+    description: 'Плагин для просмотра IPTV плейлиста ru-tv.site',
 
-    if (!window.Lampa || !Lampa.Extension) return;
+    // Метод для получения списка каналов
+    async getList() {
+      const playlistUrl = 'http://pl.ru-tv.site/bcc73d92/33fcd1b1/tv.m3u';
 
-    const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
-    const EPG_URL = 'http://epg.ru-tv.site/14.xml';
+      try {
+        const response = await fetch(playlistUrl);
+        const text = await response.text();
 
-    let groups = {};
+        // Парсим M3U плейлист
+        const channels = parseM3U(text);
 
-    function parseM3U(text) {
-        let lines = text.split('\n');
-        let ch = null;
-        groups = {};
+        return channels;
+      } catch (e) {
+        console.error('Ошибка загрузки плейлиста:', e);
+        return [];
+      }
+    },
 
-        lines.forEach(line => {
-            line = line.trim();
-
-            if (line.startsWith('#EXTINF')) {
-                ch = {
-                    name: line.split(',').pop(),
-                    logo: (/tvg-logo="([^"]+)"/.exec(line) || [])[1] || '',
-                    group: (/group-title="([^"]+)"/.exec(line) || [])[1] || 'Без группы',
-                    url: ''
-                };
-            }
-            else if (line && !line.startsWith('#') && ch) {
-                ch.url = line;
-                (groups[ch.group] = groups[ch.group] || []).push(ch);
-                ch = null;
-            }
-        });
+    // Метод для запуска воспроизведения
+    play(channel) {
+      return {
+        url: channel.url,
+        title: channel.name,
+        // Дополнительные параметры, если нужны
+      };
     }
+  };
+}
 
-    function openIPTV() {
-        let html = $('<div class="iptv"></div>');
+// Функция для парсинга M3U плейлиста в массив каналов
+function parseM3U(data) {
+  const lines = data.split('\n');
+  const channels = [];
+  let currentChannel = {};
 
-        Lampa.Utils.request({
-            url: PLAYLIST_URL,
-            success: function (data) {
-                parseM3U(data);
-
-                Object.keys(groups).forEach(group => {
-                    html.append('<div class="iptv-group">' + group + '</div>');
-
-                    groups[group].forEach(ch => {
-                        let item = $(`
-                            <div class="iptv-item selector">
-                                ${ch.logo ? `<img src="${ch.logo}">` : ''}
-                                <span>${ch.name}</span>
-                            </div>
-                        `);
-
-                        item.on('click', () => {
-                            Lampa.Player.play({
-                                title: ch.name,
-                                url: ch.url,
-                                poster: ch.logo,
-                                epg: { url: EPG_URL }
-                            });
-                        });
-
-                        html.append(item);
-                    });
-                });
-            },
-            error: function () {
-                Lampa.Noty.show('Ошибка загрузки IPTV');
-            }
-        });
-
-        Lampa.Activity.push({
-            title: 'IPTV',
-            component: 'content',
-            page: 1,
-            html: html
-        });
+  for (let line of lines) {
+    line = line.trim();
+    if (line.startsWith('#EXTINF')) {
+      // Получаем название канала
+      const nameMatch = line.match(/,(.*)$/);
+      currentChannel = {
+        name: nameMatch ? nameMatch[1] : 'Unknown',
+        url: ''
+      };
+    } else if (line && !line.startsWith('#')) {
+      // URL канала
+      currentChannel.url = line;
+      channels.push(currentChannel);
+      currentChannel = {};
     }
+  }
 
-    Lampa.Extension.add({
-        name: 'IPTV',
-        description: 'IPTV плейлист',
-        version: '1.0',
-        onClick: openIPTV
-    });
-
-})();
+  return channels;
+}
