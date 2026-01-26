@@ -1,9 +1,10 @@
 (function () {
     'use strict';
 
-    if (!window.Lampa) return;
+    if (!window.Lampa || !Lampa.Plugin) return;
 
-    const PLUGIN = 'IPTV';
+    const PLUGIN_ID = 'iptv_plugin';
+    const PLUGIN_NAME = 'IPTV';
     const PLAYLIST_URL = 'https://falling-recipe-749e.vetahav83.workers.dev/';
     const EPG_URL = 'http://epg.ru-tv.site/14.xml';
 
@@ -18,23 +19,16 @@
             line = line.trim();
 
             if (line.indexOf('#EXTINF') === 0) {
-                let name = line.split(',').pop();
-                let logo = /tvg-logo="([^"]+)"/.exec(line);
-                let group = /group-title="([^"]+)"/.exec(line);
-
                 ch = {
-                    name: name,
-                    logo: logo ? logo[1] : '',
-                    group: group ? group[1] : 'Без группы',
+                    name: line.split(',').pop(),
+                    logo: (/tvg-logo="([^"]+)"/.exec(line) || [])[1] || '',
+                    group: (/group-title="([^"]+)"/.exec(line) || [])[1] || 'Без группы',
                     url: ''
                 };
             }
             else if (line && line[0] !== '#' && ch) {
                 ch.url = line;
-
-                if (!groups[ch.group]) groups[ch.group] = [];
-                groups[ch.group].push(ch);
-
+                (groups[ch.group] = groups[ch.group] || []).push(ch);
                 ch = null;
             }
         });
@@ -48,7 +42,7 @@
                 done();
             },
             error: function () {
-                Lampa.Noty.show('Ошибка загрузки IPTV плейлиста');
+                Lampa.Noty.show('IPTV: ошибка загрузки плейлиста');
             }
         });
     }
@@ -58,13 +52,11 @@
             title: ch.name,
             url: ch.url,
             poster: ch.logo,
-            epg: {
-                url: EPG_URL
-            }
+            epg: { url: EPG_URL }
         });
     }
 
-    Lampa.Component.add('iptv', {
+    Lampa.Component.add(PLUGIN_ID, {
         create: function () {
             let html = $('<div class="iptv"></div>');
 
@@ -79,7 +71,6 @@
                                 <span>${ch.name}</span>
                             </div>
                         `);
-
                         item.on('click', () => play(ch));
                         html.append(item);
                     });
@@ -90,11 +81,17 @@
         }
     });
 
-    Lampa.Listener.follow('app', function (e) {
-        if (e.type === 'ready') {
+    Lampa.Plugin.add({
+        id: PLUGIN_ID,
+        name: PLUGIN_NAME,
+        description: 'IPTV плагин',
+        version: '1.0.0',
+        type: 'video',
+        onLoad: function () {},
+        onOpen: function () {
             Lampa.Activity.push({
-                title: PLUGIN,
-                component: 'iptv',
+                title: PLUGIN_NAME,
+                component: PLUGIN_ID,
                 page: 1
             });
         }
