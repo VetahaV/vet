@@ -1,14 +1,12 @@
 (function () {
 
-    var PLAYLIST_URL = 'http://pl.ru-tv.site/bcc73d92/33fcd1b1/line.m3u'; // <-- ТУТ СВОЙ URL
+    var PLAYLIST_URL = 'http://pl.ru-tv.site/bcc73d92/33fcd1b1/line.m3u';
 
     function startPlugin() {
-        Lampa.Listener.send('activity', {
-            type: 'add',
-            data: {
-                title: 'VET IPTV',
-                component: 'vet_iptv'
-            }
+        Lampa.Activity.push({
+            component: 'vet_iptv',
+            title: 'VET IPTV',
+            page: 1
         });
     }
 
@@ -16,44 +14,53 @@
         name: 'VET IPTV',
 
         render: function () {
-            this.html = $('<div class="content"><div class="items" id="vet_items">Загрузка...</div></div>');
+            this.html = $('<div class="content"><div class="items"></div></div>');
             this.start();
         },
 
         start: function () {
-            loadPlaylist();
+            this.items = this.html.find('.items');
+            this.items.text('Загрузка каналов...');
+            loadPlaylist(this.items);
         }
     });
 
-    function loadPlaylist() {
+    function loadPlaylist(container) {
         Lampa.Request.get(PLAYLIST_URL, function (text) {
-            parseM3U(text);
+            parseM3U(text, container);
         }, function () {
-            $('#vet_items').html('Ошибка загрузки плейлиста');
+            container.text('Ошибка загрузки плейлиста');
         });
     }
 
-    function parseM3U(text) {
+    function parseM3U(text, container) {
         var lines = text.split('\n');
         var html = '';
+        var name = '';
+        var url = '';
 
         for (var i = 0; i < lines.length; i++) {
             if (lines[i].indexOf('#EXTINF') === 0) {
-                var name = lines[i].split(',')[1] || 'Канал';
-                var stream = lines[i + 1];
+                var parts = lines[i].split(',');
+                name = parts.length > 1 ? parts[1].trim() : 'Канал';
+            } else if (lines[i].indexOf('http') === 0) {
+                url = lines[i].trim();
 
-                html += '<div class="item" data-url="' + stream + '">' + name + '</div>';
+                html +=
+                    '<div class="item selector" data-url="' + url + '">' +
+                        '<div class="title">' + name + '</div>' +
+                    '</div>';
             }
         }
 
-        $('#vet_items').html(html);
+        container.html(html);
 
-        $('.item').on('click', function () {
-            playChannel($(this).data('url'));
+        container.find('.item').on('click', function () {
+            play($(this).data('url'));
         });
     }
 
-    function playChannel(url) {
+    function play(url) {
         Lampa.Player.play({
             title: 'IPTV',
             url: url
@@ -64,7 +71,7 @@
 
     return {
         name: 'Vet IPTV',
-        version: '1.0',
+        version: '1.1',
         author: 'VetahaV'
     };
 
