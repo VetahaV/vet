@@ -1,25 +1,22 @@
 (function () {
 
-    function startPlugin() {
-        console.log('VET plugin started');
+    var PLAYLIST_URL = 'http://pl.ru-tv.site/bcc73d92/33fcd1b1/line.m3u'; // <-- ТУТ СВОЙ URL
 
-        Lampa.Activity.push({
-            url: '',
-            title: 'VET TV',
-            component: 'vet_tv',
-            page: 1
+    function startPlugin() {
+        Lampa.Listener.send('activity', {
+            type: 'add',
+            data: {
+                title: 'VET IPTV',
+                component: 'vet_iptv'
+            }
         });
     }
 
-    Lampa.Component.add('vet_tv', {
-        name: 'VET TV',
-        render: function () {
-            var html = '<div class="content">' +
-                '<h2>Каналы</h2>' +
-                '<div id="vet_list">Загрузка...</div>' +
-            '</div>';
+    Lampa.Component.add('vet_iptv', {
+        name: 'VET IPTV',
 
-            this.html = $(html);
+        render: function () {
+            this.html = $('<div class="content"><div class="items" id="vet_items">Загрузка...</div></div>');
             this.start();
         },
 
@@ -29,12 +26,10 @@
     });
 
     function loadPlaylist() {
-        var url = 'https://example.com/playlist.m3u';
-
-        Lampa.Request.get(url, function (data) {
-            parseM3U(data);
+        Lampa.Request.get(PLAYLIST_URL, function (text) {
+            parseM3U(text);
         }, function () {
-            $('#vet_list').text('Ошибка загрузки плейлиста');
+            $('#vet_items').html('Ошибка загрузки плейлиста');
         });
     }
 
@@ -44,14 +39,25 @@
 
         for (var i = 0; i < lines.length; i++) {
             if (lines[i].indexOf('#EXTINF') === 0) {
-                var name = lines[i].split(',')[1];
+                var name = lines[i].split(',')[1] || 'Канал';
                 var stream = lines[i + 1];
 
-                html += '<div class="channel">' + name + '</div>';
+                html += '<div class="item" data-url="' + stream + '">' + name + '</div>';
             }
         }
 
-        $('#vet_list').html(html);
+        $('#vet_items').html(html);
+
+        $('.item').on('click', function () {
+            playChannel($(this).data('url'));
+        });
+    }
+
+    function playChannel(url) {
+        Lampa.Player.play({
+            title: 'IPTV',
+            url: url
+        });
     }
 
     Lampa.Plugins.on('ready', startPlugin);
